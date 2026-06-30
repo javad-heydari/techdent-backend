@@ -1,12 +1,12 @@
-const errorHandler = (err, req, res, next) => {
-  console.error("🔥 ERROR:", err);
+/**
+ * GLOBAL ERROR HANDLER
+ */
 
-  const statusCode = err.statusCode || 500;
+module.exports = (err, req, res, next) => {
+  console.error(err);
 
-  res.status(statusCode).json({
+  return res.status(err.status || 500).json({
     success: false,
     message: err.message || "Internal Server Error",
   });
 };
-
-module.exports = errorHandler;

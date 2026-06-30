@@ -1,86 +1,96 @@
 /**
- * ORDER ROUTES (RBAC + VALIDATION + SECURITY LAYER)
+ * ORDER ROUTES (SECURE + CLEAN + READY FOR PRODUCTION)
  */
 
 const express = require("express");
 const router = express.Router();
 
-/**
- * Middlewares
- */
+// middlewares
 const authMiddleware = require("../middlewares/auth.middleware");
 const roleMiddleware = require("../middlewares/role.middleware");
 const validate = require("../middlewares/validate.middleware");
 
-/**
- * Validators
- */
+// validators
 const {
   createOrderSchema,
   updateStatusSchema,
 } = require("../validators/order.validator");
 
-/**
- * Controllers
- */
+// controllers
 const {
   getOrders,
   getOrderById,
   createOrder,
+  updateOrder,
   updateOrderStatus,
   deleteOrder,
 } = require("../controllers/order.controller");
 
+// services (NEW)
+const {
+  getUserOrdersService,
+} = require("../services/order.service");
+
 /**
  * GET ALL ORDERS
- * admin + dentist can see all orders
- * user فقط سفارش‌های خودش را می‌بیند (داخل service کنترل شده)
+ * - Admin: all orders
+ * - User: filtered in service layer
  */
-router.get(
-  "/",
-  authMiddleware,
-  roleMiddleware("admin", "dentist"),
-  getOrders
-);
+router.get("/", authMiddleware, getOrders);
+
+/**
+ * GET USER OWN ORDERS (NEW - CLEAN ENDPOINT)
+ * - User sees only their own orders
+ * - No role confusion
+ */
+router.get("/me", authMiddleware, async (req, res) => {
+  try {
+    // get user id from JWT middleware
+    const userId = req.user.id;
+
+    // fetch only user orders
+    const orders = await getUserOrdersService(userId);
+
+    return res.status(200).json({
+      success: true,
+      data: orders,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
 
 /**
  * GET SINGLE ORDER
- * admin + dentist + owner (inside service check)
  */
-router.get(
-  "/:id",
-  authMiddleware,
-  roleMiddleware("admin", "dentist", "user"),
-  getOrderById
-);
+router.get("/:id", authMiddleware, getOrderById);
 
 /**
  * CREATE ORDER
- * user + dentist + admin
  */
 router.post(
   "/",
   authMiddleware,
-  roleMiddleware("admin", "dentist", "user"),
   validate(createOrderSchema),
   createOrder
 );
 
 /**
- * UPDATE ORDER STATUS
- * only admin + dentist
+ * UPDATE STATUS (ADMIN ONLY)
  */
 router.patch(
   "/:id/status",
   authMiddleware,
-  roleMiddleware("admin", "dentist"),
+  roleMiddleware("admin"),
   validate(updateStatusSchema),
   updateOrderStatus
 );
-
+router.patch("/:id", authMiddleware, updateOrder);
 /**
- * DELETE ORDER
- * only admin
+ * DELETE ORDER (ADMIN ONLY)
  */
 router.delete(
   "/:id",
@@ -88,5 +98,10 @@ router.delete(
   roleMiddleware("admin"),
   deleteOrder
 );
+
+router.patch("/:id/status", authMiddleware, (req, res, next) => {
+  console.log("🔥 BODY RECEIVED:", req.body);
+  next();
+}, validate(updateStatusSchema), updateOrderStatus);
 
 module.exports = router;

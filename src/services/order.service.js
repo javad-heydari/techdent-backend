@@ -1,36 +1,27 @@
 const Order = require("../models/order.model");
 
 /**
- * GET ORDERS (ROLE + OWNERSHIP SAFE)
+ * GET ORDERS
+ * - admin: all
+ * - user: own only
  */
-const getOrdersService = async (user, query) => {
-  const page = parseInt(query.page) || 1;
-  const limit = parseInt(query.limit) || 10;
-  const skip = (page - 1) * limit;
+exports.getOrdersService = async (user, query) => {
+  const filter = {};
 
-  // 🔥 پایه فیلتر
-  let filter = {};
-
-  // 👤 اگر user عادی باشد → فقط سفارش‌های خودش
-  if (user.role === "user") {
+  // 👤 USER restriction
+  if (user.role !== "admin") {
     filter.user = user.id;
   }
 
-  // 🔎 سرچ
-  if (query.search) {
-    filter.$or = [
-      { patientName: { $regex: query.search, $options: "i" } },
-      { doctorName: { $regex: query.search, $options: "i" } },
-    ];
-  }
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
+  const skip = (page - 1) * limit;
 
-  // 📌 فیلتر status
-  if (query.status) {
-    filter.status = query.status;
-  }
+  if (query.status) filter.status = query.status;
+  if (query.caseType) filter.caseType = query.caseType;
 
-  // 📦 گرفتن دیتا
   const orders = await Order.find(filter)
+    .populate("user", "name email role")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -46,17 +37,17 @@ const getOrdersService = async (user, query) => {
 };
 
 /**
- * GET ORDER BY ID (SECURE)
+ * GET ORDER BY ID
  */
-const getOrderByIdService = async (user, id) => {
-  const order = await Order.findById(id);
+exports.getOrderByIdService = async (user, orderId) => {
+  const order = await Order.findById(orderId).populate(
+    "user",
+    "name email role"
+  );
 
-  if (!order) {
-    throw new Error("Order not found");
-  }
+  if (!order) throw new Error("Order not found");
 
-  // 🔐 اگر user است → فقط مال خودش
-  if (user.role === "user" && order.user.toString() !== user.id) {
+  if (user.role !== "admin" && order.user._id.toString() !== user.id) {
     throw new Error("Access denied");
   }
 
@@ -64,41 +55,94 @@ const getOrderByIdService = async (user, id) => {
 };
 
 /**
- * CREATE ORDER
+ * CREATE ORDER (FIXED)
  */
-const createOrderService = async (user, data) => {
-  const order = await Order.create({
-    ...data,
-    user: user.id, // 🔥 مهم: اتصال به user
+exports.createOrderService = async (userId, data) => {
+  if (!userId) throw new Error("User not found in request");
+
+  return await Order.create({
+    patientName: data.patientName,
+    doctorName: data.doctorName,
+    caseType: data.caseType,
+    shade: data.shade || null,
+    quantity: data.quantity || 1,
+    notes: data.notes || "",
+    dueDate: data.dueDate || null,
+
+    // 🔥 IMPORTANT
+    user: userId,
   });
+};
+
+/**
+ * UPDATE ORDER STATUS (ADMIN ONLY)
+ */
+exports.updateOrderStatusService = async (orderId, status) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) throw new Error("Order not found");
+
+  order.status = status;
+  await order.save();
 
   return order;
 };
 
 /**
- * UPDATE STATUS (ADMIN / DENTIST)
+ * UPDATE ORDER (USER + ADMIN)
  */
-const updateOrderStatusService = async (id, status) => {
-  const order = await Order.findByIdAndUpdate(
-    id,
-    { status },
-    { new: true }
-  );
+exports.updateOrderService = async (user, orderId, data) => {
+  const order = await Order.findById(orderId);
+
+  if (!order) throw new Error("Order not found");
+
+  // ownership check
+  if (user.role !== "admin" && order.user.toString() !== user.id) {
+    throw new Error("Access denied");
+  }
+
+  const baseFields = [
+    "patientName",
+    "doctorName",
+    "caseType",
+    "shade",
+    "quantity",
+    "notes",
+    "dueDate",
+  ];
+
+  baseFields.forEach((field) => {
+    if (data[field] !== undefined) {
+      order[field] = data[field];
+    }
+  });
+
+  // admin-only
+  if (user.role === "admin" && data.status) {
+    order.status = data.status;
+  }
+
+  await order.save();
 
   return order;
+};
+
+/**
+ * GET USER ORDERS
+ */
+exports.getUserOrdersService = async (userId) => {
+  return await Order.find({ user: userId }).sort({ createdAt: -1 });
 };
 
 /**
  * DELETE ORDER
  */
-const deleteOrderService = async (id) => {
-  await Order.findByIdAndDelete(id);
-};
+exports.deleteOrderService = async (orderId) => {
+  const order = await Order.findById(orderId);
 
-module.exports = {
-  getOrdersService,
-  getOrderByIdService,
-  createOrderService,
-  updateOrderStatusService,
-  deleteOrderService,
+  if (!order) throw new Error("Order not found");
+
+  await order.deleteOne();
+
+  return true;
 };

@@ -1,58 +1,64 @@
 const mongoose = require("mongoose");
 
+/**
+ * ORDER MODEL
+ * - Handles dental orders
+ * - Includes ownership system
+ */
+
 const orderSchema = new mongoose.Schema(
   {
-    // 👤 patient name
     patientName: {
       type: String,
       required: true,
+      trim: true,
     },
 
-    // 👨‍⚕️ doctor name
     doctorName: {
       type: String,
       required: true,
+      trim: true,
     },
 
-    // 🦷 type of dental case
     caseType: {
       type: String,
       required: true,
+      trim: true,
     },
 
-    // 🎨 shade color
     shade: {
       type: String,
+      default: null,
     },
 
-    // 🔢 quantity
     quantity: {
       type: Number,
       default: 1,
+      min: 1,
     },
 
-    // 📊 status workflow
     status: {
       type: String,
       enum: ["pending", "in_progress", "completed", "delivered"],
       default: "pending",
     },
 
-    // 📅 due date
     dueDate: {
       type: Date,
+      default: null,
     },
 
-    // 📝 notes
     notes: {
       type: String,
+      default: "",
     },
 
-    // 👤 OWNER (important for ownership system)
+    // 🔥 ownership (CRITICAL)
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
   },
   {

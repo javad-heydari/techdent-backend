@@ -1,5 +1,5 @@
 /**
- * AUTH CONTROLLER (FINAL FIXED VERSION)
+ * AUTH CONTROLLER (PRODUCTION READY - CLEAN & SAFE)
  */
 
 const bcrypt = require("bcryptjs");
@@ -7,7 +7,9 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 
 /**
- * Generate Tokens
+ * Generate JWT Tokens
+ * - accessToken: کوتاه مدت
+ * - refreshToken: بلند مدت
  */
 const generateTokens = (user) => {
   const accessToken = jwt.sign(
@@ -16,7 +18,9 @@ const generateTokens = (user) => {
       role: user.role,
     },
     process.env.JWT_ACCESS_SECRET,
-    { expiresIn: process.env.ACCESS_TOKEN_EXPIRES || "15m" }
+    {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRES || "30m",
+    }
   );
 
   const refreshToken = jwt.sign(
@@ -24,19 +28,22 @@ const generateTokens = (user) => {
       id: user._id,
     },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRES || "7d" }
+    {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRES || "7d",
+    }
   );
 
   return { accessToken, refreshToken };
 };
 
 /**
- * REGISTER
+ * REGISTER USER
  */
 exports.register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
+    // 🔍 check existing user
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -46,8 +53,10 @@ exports.register = async (req, res) => {
       });
     }
 
+    // 🔐 hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // 👤 create user
     const user = await User.create({
       name,
       email,
@@ -55,8 +64,10 @@ exports.register = async (req, res) => {
       role: role || "user",
     });
 
+    // 🔑 generate tokens
     const tokens = generateTokens(user);
 
+    // 💾 save refresh token
     user.refreshToken = tokens.refreshToken;
     await user.save();
 
@@ -80,12 +91,13 @@ exports.register = async (req, res) => {
 };
 
 /**
- * LOGIN
+ * LOGIN USER
  */
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // 🔍 find user
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -95,6 +107,7 @@ exports.login = async (req, res) => {
       });
     }
 
+    // 🔐 compare password
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -104,8 +117,10 @@ exports.login = async (req, res) => {
       });
     }
 
+    // 🔑 generate tokens
     const tokens = generateTokens(user);
 
+    // 💾 update refresh token
     user.refreshToken = tokens.refreshToken;
     await user.save();
 
@@ -141,6 +156,7 @@ exports.refreshToken = async (req, res) => {
       });
     }
 
+    // 🔐 verify refresh token
     const decoded = jwt.verify(
       refreshToken,
       process.env.JWT_REFRESH_SECRET
@@ -155,6 +171,7 @@ exports.refreshToken = async (req, res) => {
       });
     }
 
+    // 🔑 generate new tokens
     const tokens = generateTokens(user);
 
     user.refreshToken = tokens.refreshToken;
@@ -174,7 +191,7 @@ exports.refreshToken = async (req, res) => {
 };
 
 /**
- * LOGOUT
+ * LOGOUT USER
  */
 exports.logout = async (req, res) => {
   try {

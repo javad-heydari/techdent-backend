@@ -1,21 +1,13 @@
-/**
- * ORDER CONTROLLER (CLEAN LAYER)
- * فقط مسئول ارتباط بین request و service است
- */
-
 const orderService = require("../services/order.service");
 
 /**
  * GET ORDERS
  */
-const getOrders = async (req, res) => {
+exports.getOrders = async (req, res) => {
   try {
-    const result = await orderService.getOrdersService(
-      req.user,
-      req.query
-    );
+    const result = await orderService.getOrdersService(req.user, req.query);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       data: result.orders,
       pagination: {
@@ -24,32 +16,32 @@ const getOrders = async (req, res) => {
         pages: result.pages,
       },
     });
-  } catch (error) {
-    return res.status(500).json({
+  } catch (err) {
+    res.status(500).json({
       success: false,
-      message: error.message,
+      message: err.message,
     });
   }
 };
 
 /**
- * GET ORDER BY ID
+ * GET ORDER
  */
-const getOrderById = async (req, res) => {
+exports.getOrderById = async (req, res) => {
   try {
     const order = await orderService.getOrderByIdService(
       req.user,
       req.params.id
     );
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       data: order,
     });
-  } catch (error) {
-    return res.status(400).json({
+  } catch (err) {
+    res.status(403).json({
       success: false,
-      message: error.message,
+      message: err.message,
     });
   }
 };
@@ -57,21 +49,21 @@ const getOrderById = async (req, res) => {
 /**
  * CREATE ORDER
  */
-const createOrder = async (req, res) => {
+exports.createOrder = async (req, res) => {
   try {
     const order = await orderService.createOrderService(
-      req.user,
+      req.user.id,
       req.body
     );
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
       data: order,
     });
-  } catch (error) {
-    return res.status(400).json({
+  } catch (err) {
+    res.status(400).json({
       success: false,
-      message: error.message,
+      message: err.message,
     });
   }
 };
@@ -79,21 +71,44 @@ const createOrder = async (req, res) => {
 /**
  * UPDATE ORDER STATUS
  */
-const updateOrderStatus = async (req, res) => {
+exports.updateOrderStatus = async (req, res) => {
   try {
     const order = await orderService.updateOrderStatusService(
       req.params.id,
       req.body.status
     );
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       data: order,
     });
-  } catch (error) {
-    return res.status(400).json({
+  } catch (err) {
+    res.status(400).json({
       success: false,
-      message: error.message,
+      message: err.message,
+    });
+  }
+};
+
+/**
+ * UPDATE ORDER
+ */
+exports.updateOrder = async (req, res) => {
+  try {
+    const order = await orderService.updateOrderService(
+      req.user,
+      req.params.id,
+      req.body
+    );
+
+    res.status(200).json({
+      success: true,
+      data: order,
+    });
+  } catch (err) {
+    res.status(403).json({
+      success: false,
+      message: err.message,
     });
   }
 };
@@ -101,29 +116,18 @@ const updateOrderStatus = async (req, res) => {
 /**
  * DELETE ORDER
  */
-const deleteOrder = async (req, res) => {
+exports.deleteOrder = async (req, res) => {
   try {
     await orderService.deleteOrderService(req.params.id);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      message: "Order deleted successfully",
+      message: "Order deleted",
     });
-  } catch (error) {
-    return res.status(400).json({
+  } catch (err) {
+    res.status(400).json({
       success: false,
-      message: error.message,
+      message: err.message,
     });
   }
-};
-
-/**
- * EXPORT ALL
- */
-module.exports = {
-  getOrders,
-  getOrderById,
-  createOrder,
-  updateOrderStatus,
-  deleteOrder,
 };
