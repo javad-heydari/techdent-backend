@@ -1,38 +1,22 @@
 /**
- * DATABASE CONNECTION (POSTGRES READY)
- * Clean architecture version
+ * DATABASE CONNECTION (PRISMA VERSION)
+ * ------------------------------------
+ * Replaces MongoDB/Mongoose completely
  */
 
-const { Pool } = require("pg");
+const prisma = require("../lib/prisma");
 
 /**
- * Create Postgres pool
- */
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-/**
- * Connect DB function
+ * Test DB connection
  */
 const connectDB = async () => {
   try {
-    const client = await pool.connect();
-    console.log("✅ PostgreSQL Connected Successfully");
-    client.release();
+    await prisma.$connect();
+    console.log("✅ PostgreSQL Connected via Prisma");
   } catch (err) {
-    console.error("❌ PostgreSQL Connection Error:", err.message);
+    console.error("❌ DB Connection Error:", err.message);
     process.exit(1);
   }
 };
 
-/**
- * IMPORTANT:
- * Export function directly (fixes your crash)
- */
 module.exports = connectDB;
-
-/**
- * Optional export for pool (advanced usage later)
- */
-module.exports.pool = pool;

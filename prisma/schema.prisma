@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  password     String
+  role         Role     @default(USER)
+
+  refreshToken String?
+
+  orders       Order[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Order {
+  id          String   @id @default(uuid())
+  patientName String
+  doctorName  String
+  caseType    String
+  shade       String?
+  quantity    Int      @default(1)
+
+  status      OrderStatus @default(PENDING)
+  dueDate     DateTime?
+  notes       String?
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+  LAB
+  DOCTOR
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DELIVERED
+}
