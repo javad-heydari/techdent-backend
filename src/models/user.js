@@ -1,28 +1,43 @@
 /**
- * USER MODEL
- * Added refreshToken support for secure sessions
+ * USER MODEL (TEMP LAYER - MIGRATION STEP 1)
+ * ----------------------------------------
+ * WARNING:
+ * This is temporary replacement for Mongoose.
+ * Will be replaced with Prisma/Postgres table later.
  */
 
-const mongoose = require("mongoose");
+const users = [];
 
-const userSchema = new mongoose.Schema(
-  {
-    name: String,
-    email: { type: String, unique: true },
-    password: String,
-    role: {
-      type: String,
-      enum: ["user", "admin"],
-      default: "user",
-    },
+/**
+ * Find user by email
+ */
+const findOne = async ({ email }) => {
+  return users.find((u) => u.email === email);
+};
 
-    // 🔐 STORE CURRENT REFRESH TOKEN
-    refreshToken: {
-      type: String,
-      default: null,
-    },
-  },
-  { timestamps: true }
-);
+/**
+ * Find user by ID
+ */
+const findById = async (id) => {
+  return users.find((u) => u.id === id);
+};
 
-module.exports = mongoose.model("User", userSchema);
+/**
+ * Create user
+ */
+const create = async (data) => {
+  const user = {
+    id: String(Date.now()),
+    ...data,
+    refreshToken: null,
+  };
+
+  users.push(user);
+  return user;
+};
+
+module.exports = {
+  findOne,
+  findById,
+  create,
+};

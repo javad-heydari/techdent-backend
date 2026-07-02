@@ -1,20 +1,25 @@
 /**
- * AUTH CONTROLLER (PRODUCTION READY - CLEAN & SAFE)
+ * AUTH CONTROLLER (DATABASE-AGNOSTIC LAYER)
+ * ----------------------------------------
+ * Now independent from Mongo/Mongoose
+ * Works with ANY DB layer (Postgres later)
  */
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+
+/**
+ * TEMP USER MODEL (will be replaced by Postgres)
+ */
 const User = require("../models/user");
 
 /**
- * Generate JWT Tokens
- * - accessToken: کوتاه مدت
- * - refreshToken: بلند مدت
+ * Generate JWT tokens
  */
 const generateTokens = (user) => {
   const accessToken = jwt.sign(
     {
-      id: user._id,
+      id: user.id,
       role: user.role,
     },
     process.env.JWT_ACCESS_SECRET,
@@ -25,7 +30,7 @@ const generateTokens = (user) => {
 
   const refreshToken = jwt.sign(
     {
-      id: user._id,
+      id: user.id,
     },
     process.env.JWT_REFRESH_SECRET,
     {
@@ -43,7 +48,6 @@ exports.register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    // 🔍 check existing user
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -53,10 +57,8 @@ exports.register = async (req, res) => {
       });
     }
 
-    // 🔐 hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 👤 create user
     const user = await User.create({
       name,
       email,
@@ -64,20 +66,16 @@ exports.register = async (req, res) => {
       role: role || "user",
     });
 
-    // 🔑 generate tokens
     const tokens = generateTokens(user);
 
-    // 💾 save refresh token
     user.refreshToken = tokens.refreshToken;
-    await user.save();
 
     return res.status(201).json({
       success: true,
-      message: "User created",
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       user: {
-        id: user._id,
+        id: user.id,
         email: user.email,
         role: user.role,
       },
@@ -97,7 +95,6 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 🔍 find user
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -107,7 +104,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // 🔐 compare password
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -117,19 +113,16 @@ exports.login = async (req, res) => {
       });
     }
 
-    // 🔑 generate tokens
     const tokens = generateTokens(user);
 
-    // 💾 update refresh token
     user.refreshToken = tokens.refreshToken;
-    await user.save();
 
     return res.status(200).json({
       success: true,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       user: {
-        id: user._id,
+        id: user.id,
         email: user.email,
         role: user.role,
       },
@@ -156,7 +149,6 @@ exports.refreshToken = async (req, res) => {
       });
     }
 
-    // 🔐 verify refresh token
     const decoded = jwt.verify(
       refreshToken,
       process.env.JWT_REFRESH_SECRET
@@ -171,11 +163,9 @@ exports.refreshToken = async (req, res) => {
       });
     }
 
-    // 🔑 generate new tokens
     const tokens = generateTokens(user);
 
     user.refreshToken = tokens.refreshToken;
-    await user.save();
 
     return res.status(200).json({
       success: true,
@@ -199,7 +189,6 @@ exports.logout = async (req, res) => {
 
     if (user) {
       user.refreshToken = null;
-      await user.save();
     }
 
     return res.status(200).json({
