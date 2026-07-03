@@ -1,69 +1,66 @@
-const mongoose = require("mongoose");
-
 /**
- * ORDER MODEL
- * - Handles dental orders
- * - Includes ownership system
+ * ORDER REPOSITORY (TEMP IN-MEMORY LAYER)
+ * ----------------------------------------
+ * PURPOSE:
+ * Temporary replacement for PostgreSQL/Prisma orders table
  */
 
-const orderSchema = new mongoose.Schema(
-  {
-    patientName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+const orders = [];
 
-    doctorName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+/**
+ * Create new order
+ */
+const create = async (data) => {
+  const order = {
+    id: String(Date.now()),
 
-    caseType: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    // order data
+    patientName: data.patientName,
+    doctorName: data.doctorName,
+    caseType: data.caseType,
+    shade: data.shade || null,
+    quantity: data.quantity || 1,
 
-    shade: {
-      type: String,
-      default: null,
-    },
+    status: data.status || "pending",
+    dueDate: data.dueDate || null,
+    notes: data.notes || "",
 
-    quantity: {
-      type: Number,
-      default: 1,
-      min: 1,
-    },
+    // ownership
+    userId: data.userId,
 
-    status: {
-      type: String,
-      enum: ["pending", "in_progress", "completed", "delivered"],
-      default: "pending",
-    },
+    // timestamps
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
-    dueDate: {
-      type: Date,
-      default: null,
-    },
+  orders.push(order);
+  return order;
+};
 
-    notes: {
-      type: String,
-      default: "",
-    },
+/**
+ * Get all orders
+ */
+const find = async () => {
+  return orders;
+};
 
-    // 🔥 ownership (CRITICAL)
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+/**
+ * Find orders by user
+ */
+const findByUserId = async (userId) => {
+  return orders.filter((order) => order.userId === userId);
+};
 
-module.exports = mongoose.model("Order", orderSchema);
+/**
+ * Find order by ID
+ */
+const findById = async (id) => {
+  return orders.find((order) => order.id === id) || null;
+};
+
+module.exports = {
+  create,
+  find,
+  findByUserId,
+  findById,
+};

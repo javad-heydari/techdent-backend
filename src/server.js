@@ -1,24 +1,22 @@
 /**
  * TechDent Backend Entry Point
- * Clean Postgres-ready version
+ * Docker-native + Production ready
  */
 
-require("dotenv").config({
-  path: require("path").resolve(__dirname, "../.env"),
-});
+require("dotenv").config();
 
 const app = require("./app");
-const connectDB = require("./config/database");
+const { connectDB } = require("./config/database");
 
 /**
- * Initialize database connection
+ * Connect to database
  */
 connectDB();
 
 const PORT = process.env.PORT || 5000;
 
 /**
- * Start HTTP server
+ * Start server
  */
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

@@ -7,39 +7,88 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ======================================================
+// User
+// Main application user.
+// One user can own multiple orders and sessions.
+// ======================================================
+
 model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  password     String
-  role         Role     @default(USER)
+  id String @id @default(uuid())
 
-  refreshToken String?
+  name     String
+  email    String @unique
+  password String
 
-  orders       Order[]
+  role Role @default(USER)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  orders   Order[]
+  sessions Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
+// ======================================================
+// Session
+// Stores refresh tokens for every logged-in device.
+// Supports multi-device login and token revocation.
+// ======================================================
+
+model Session {
+  id String @id @default(uuid())
+
+  refreshToken String @unique
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  userAgent String?
+  ipAddress String?
+
+  isValid Boolean @default(true)
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ======================================================
+// Order
+// Dental laboratory order.
+// ======================================================
 
 model Order {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
+
   patientName String
   doctorName  String
-  caseType    String
-  shade       String?
-  quantity    Int      @default(1)
 
-  status      OrderStatus @default(PENDING)
-  dueDate     DateTime?
-  notes       String?
+  caseType String
+  shade    String?
 
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  quantity Int @default(1)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status OrderStatus @default(PENDING)
+
+  dueDate DateTime?
+  notes   String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
+
+// ======================================================
+// User Roles
+// ======================================================
 
 enum Role {
   USER
@@ -47,6 +96,10 @@ enum Role {
   LAB
   DOCTOR
 }
+
+// ======================================================
+// Order Status
+// ======================================================
 
 enum OrderStatus {
   PENDING

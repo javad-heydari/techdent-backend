@@ -1,20 +1,30 @@
 /**
- * DATABASE CONNECTION (PRISMA VERSION)
- * ------------------------------------
- * Replaces MongoDB/Mongoose completely
+ * ==========================================
+ * Database Connection
+ * ------------------------------------------
+ * PostgreSQL connection health check.
+ *
+ * Prisma manages the connection pool itself.
+ * We only verify that the database is reachable
+ * when the application starts.
+ * ==========================================
  */
 
 const prisma = require("../lib/prisma");
 
 /**
- * Test DB connection
+ * Test database connectivity.
  */
 const connectDB = async () => {
   try {
-    await prisma.$connect();
-    console.log("✅ PostgreSQL Connected via Prisma");
+    // Execute a lightweight query
+    await prisma.$queryRaw`SELECT 1`;
+
+    console.log("✅ PostgreSQL Connected Successfully");
   } catch (err) {
-    console.error("❌ DB Connection Error:", err.message);
+    console.error("❌ PostgreSQL Connection Error");
+    console.error(err);
+
     process.exit(1);
   }
 };
