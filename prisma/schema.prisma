@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -9,21 +10,19 @@ datasource db {
 
 // ======================================================
 // User
-// Main application user.
-// One user can own multiple orders and sessions.
 // ======================================================
 
 model User {
-  id String @id @default(uuid())
+  id        String   @id @default(uuid())
 
-  name     String
-  email    String @unique
-  password String
+  name      String
+  email     String   @unique
+  password  String
 
-  role Role @default(USER)
+  role      Role     @default(USER)
 
-  orders   Order[]
-  sessions Session[]
+  orders    Order[]
+  sessions  Session[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -31,64 +30,57 @@ model User {
 
 // ======================================================
 // Session
-// Stores refresh tokens for every logged-in device.
-// Supports multi-device login and token revocation.
 // ======================================================
 
 model Session {
-  id String @id @default(uuid())
+  id           String   @id @default(uuid())
 
-  refreshToken String @unique
+  refreshToken String   @unique
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  userAgent String?
-  ipAddress String?
+  userAgent    String?
+  ipAddress    String?
 
-  isValid Boolean @default(true)
+  isValid      Boolean  @default(true)
 
-  expiresAt DateTime
+  expiresAt    DateTime
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([userId])
 }
 
 // ======================================================
 // Order
-// Dental laboratory order.
 // ======================================================
 
 model Order {
-  id String @id @default(uuid())
+  id           String      @id @default(uuid())
 
-  patientName String
-  doctorName  String
+  patientName  String
+  doctorName   String
 
-  caseType String
-  shade    String?
+  caseType     String
+  shade        String?
 
-  quantity Int @default(1)
+  quantity     Int         @default(1)
 
-  status OrderStatus @default(PENDING)
+  status       OrderStatus @default(PENDING)
 
-  dueDate DateTime?
-  notes   String?
+  dueDate      DateTime?
+  notes        String?
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([userId])
 }
-
-// ======================================================
-// User Roles
-// ======================================================
 
 enum Role {
   USER
@@ -96,10 +88,6 @@ enum Role {
   LAB
   DOCTOR
 }
-
-// ======================================================
-// Order Status
-// ======================================================
 
 enum OrderStatus {
   PENDING

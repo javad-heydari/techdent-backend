@@ -1,20 +1,26 @@
 /**
- * AUTH CONTROLLER (DATABASE-AGNOSTIC LAYER)
- * ----------------------------------------
- * Now independent from Mongo/Mongoose
- * Works with ANY DB layer (Postgres later)
+ * ==========================================================
+ * Authentication Controller
+ * ----------------------------------------------------------
+ * Handles:
+ * - Register
+ * - Login
+ * - Refresh Token
+ * - Logout
+ *
+ * Uses Repository Pattern
+ * Controllers never communicate with Prisma directly.
+ * ==========================================================
  */
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-/**
- * TEMP USER MODEL (will be replaced by Postgres)
- */
-const User = require("../models/user");
+const UserRepository = require("../repositories/user.repository");
+const SessionRepository = require("../repositories/session.repository");
 
 /**
- * Generate JWT tokens
+ * Generate JWT Tokens
  */
 const generateTokens = (user) => {
   const accessToken = jwt.sign(
@@ -38,17 +44,22 @@ const generateTokens = (user) => {
     }
   );
 
-  return { accessToken, refreshToken };
+  return {
+    accessToken,
+    refreshToken,
+  };
 };
 
 /**
- * REGISTER USER
+ * ==========================================================
+ * Register
+ * ==========================================================
  */
 exports.register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await UserRepository.findByEmail(email);
 
     if (existingUser) {
       return res.status(400).json({
@@ -59,28 +70,46 @@ exports.register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
+    const user = await UserRepository.create({
       name,
       email,
       password: hashedPassword,
-      role: role || "user",
+      role: role || "USER",
     });
 
     const tokens = generateTokens(user);
 
-    user.refreshToken = tokens.refreshToken;
+    await SessionRepository.create({
+      refreshToken: tokens.refreshToken,
+
+      userId: user.id,
+
+      userAgent: req.headers["user-agent"] || null,
+
+      ipAddress: req.ip,
+
+      expiresAt: new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000
+      ),
+    });
 
     return res.status(201).json({
       success: true,
+
       accessToken: tokens.accessToken,
+
       refreshToken: tokens.refreshToken,
+
       user: {
         id: user.id,
+        name: user.name,
         email: user.email,
         role: user.role,
       },
     });
   } catch (err) {
+    console.error(err);
+
     return res.status(500).json({
       success: false,
       message: err.message,
@@ -89,13 +118,15 @@ exports.register = async (req, res) => {
 };
 
 /**
- * LOGIN USER
+ * ==========================================================
+ * Login
+ * ==========================================================
  */
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await UserRepository.findByEmail(email);
 
     if (!user) {
       return res.status(400).json({
@@ -115,19 +146,37 @@ exports.login = async (req, res) => {
 
     const tokens = generateTokens(user);
 
-    user.refreshToken = tokens.refreshToken;
+    await SessionRepository.create({
+      refreshToken: tokens.refreshToken,
+
+      userId: user.id,
+
+      userAgent: req.headers["user-agent"] || null,
+
+      ipAddress: req.ip,
+
+      expiresAt: new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000
+      ),
+    });
 
     return res.status(200).json({
       success: true,
+
       accessToken: tokens.accessToken,
+
       refreshToken: tokens.refreshToken,
+
       user: {
         id: user.id,
+        name: user.name,
         email: user.email,
         role: user.role,
       },
     });
   } catch (err) {
+    console.error(err);
+
     return res.status(500).json({
       success: false,
       message: err.message,
@@ -136,7 +185,9 @@ exports.login = async (req, res) => {
 };
 
 /**
- * REFRESH TOKEN
+ * ==========================================================
+ * Refresh Token
+ * ==========================================================
  */
 exports.refreshToken = async (req, res) => {
   try {
@@ -149,27 +200,51 @@ exports.refreshToken = async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(
+    jwt.verify(
       refreshToken,
       process.env.JWT_REFRESH_SECRET
     );
 
-    const user = await User.findById(decoded.id);
+    const session =
+      await SessionRepository.findByRefreshToken(refreshToken);
 
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!session) {
       return res.status(401).json({
         success: false,
         message: "Invalid refresh token",
       });
     }
 
-    const tokens = generateTokens(user);
+    if (!session.isValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Session revoked",
+      });
+    }
 
-    user.refreshToken = tokens.refreshToken;
+    const tokens = generateTokens(session.user);
+
+    await SessionRepository.invalidate(refreshToken);
+
+    await SessionRepository.create({
+      refreshToken: tokens.refreshToken,
+
+      userId: session.user.id,
+
+      userAgent: req.headers["user-agent"] || null,
+
+      ipAddress: req.ip,
+
+      expiresAt: new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000
+      ),
+    });
 
     return res.status(200).json({
       success: true,
+
       accessToken: tokens.accessToken,
+
       refreshToken: tokens.refreshToken,
     });
   } catch (err) {
@@ -181,14 +256,16 @@ exports.refreshToken = async (req, res) => {
 };
 
 /**
- * LOGOUT USER
+ * ==========================================================
+ * Logout
+ * ==========================================================
  */
 exports.logout = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const { refreshToken } = req.body;
 
-    if (user) {
-      user.refreshToken = null;
+    if (refreshToken) {
+      await SessionRepository.invalidate(refreshToken);
     }
 
     return res.status(200).json({
