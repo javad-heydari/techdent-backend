@@ -1,33 +1,60 @@
+/**
+ * ==========================================================
+ * JWT Utility
+ * ----------------------------------------------------------
+ * Responsible for generating and verifying JWT tokens.
+ * This module should be the only place using jsonwebtoken.
+ * ==========================================================
+ */
+
 const jwt = require("jsonwebtoken");
 
 /**
- * ACCESS TOKEN (short life)
+ * Generate Access Token
+ * Short-lived token used for authenticated requests.
  */
 const generateAccessToken = (user) => {
   return jwt.sign(
     {
-      id: user._id,
+      id: user.id,
       role: user.role,
     },
     process.env.JWT_ACCESS_SECRET,
-    { expiresIn: "15m" }
+    {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRES || "30m",
+    }
   );
 };
 
 /**
- * REFRESH TOKEN (long life)
+ * Generate Refresh Token
+ * Long-lived token used to obtain new access tokens.
  */
 const generateRefreshToken = (user) => {
   return jwt.sign(
     {
-      id: user._id,
+      id: user.id,
     },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: "7d" }
+    {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRES || "7d",
+    }
+  );
+};
+
+/**
+ * Verify Refresh Token
+ * Returns decoded payload if token is valid.
+ */
+const verifyRefreshToken = (token) => {
+  return jwt.verify(
+    token,
+    process.env.JWT_REFRESH_SECRET
   );
 };
 
 module.exports = {
   generateAccessToken,
   generateRefreshToken,
+  verifyRefreshToken,
 };

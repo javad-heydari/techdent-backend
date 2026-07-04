@@ -2,23 +2,14 @@
  * ==========================================================
  * Session Repository
  * ----------------------------------------------------------
- * Handles all database operations related to user sessions.
- *
- * One user can have multiple active sessions.
- *
- * Examples:
- * - Laptop
- * - Mobile
- * - Tablet
- *
- * Controllers must never access Prisma directly.
+ * Handles all Session database operations.
  * ==========================================================
  */
 
 const prisma = require("../lib/prisma");
 
 /**
- * Create new session
+ * Create session
  */
 const create = async (data) => {
   return prisma.session.create({
@@ -41,7 +32,19 @@ const findByRefreshToken = async (refreshToken) => {
 };
 
 /**
- * Delete one session
+ * Update session
+ */
+const update = async (id, data) => {
+  return prisma.session.update({
+    where: {
+      id,
+    },
+    data,
+  });
+};
+
+/**
+ * Delete session by refresh token
  */
 const deleteByRefreshToken = async (refreshToken) => {
   return prisma.session.deleteMany({
@@ -52,7 +55,7 @@ const deleteByRefreshToken = async (refreshToken) => {
 };
 
 /**
- * Delete all sessions for a user
+ * Delete all user sessions
  */
 const deleteAllByUserId = async (userId) => {
   return prisma.session.deleteMany({
@@ -79,6 +82,7 @@ const invalidate = async (refreshToken) => {
 module.exports = {
   create,
   findByRefreshToken,
+  update,
   deleteByRefreshToken,
   deleteAllByUserId,
   invalidate,
