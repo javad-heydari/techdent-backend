@@ -1,5 +1,9 @@
 /**
- * AUTH ROUTES (FULL VERSION)
+ * ==========================================================
+ * Authentication Routes
+ * ----------------------------------------------------------
+ * Handles authentication endpoints.
+ * ==========================================================
  */
 
 const express = require("express");
@@ -16,27 +20,81 @@ const {
 } = require("../controllers/auth.controller");
 
 /**
- * REGISTER USER
+ * Middlewares
+ */
+const authenticate = require("../middlewares/auth.middleware");
+const authorize = require("../middlewares/role.middleware");
+
+/**
+ * ==========================================================
+ * Public Routes
+ * ==========================================================
+ */
+
+/**
+ * Register
  * POST /api/auth/register
  */
 router.post("/register", register);
 
 /**
- * LOGIN USER
+ * Login
  * POST /api/auth/login
  */
 router.post("/login", login);
 
 /**
- * REFRESH TOKEN
+ * Refresh Access Token
  * POST /api/auth/refresh
  */
 router.post("/refresh", refreshToken);
 
 /**
- * LOGOUT USER
+ * Logout
  * POST /api/auth/logout
  */
 router.post("/logout", logout);
+
+/**
+ * ==========================================================
+ * Protected Routes
+ * ==========================================================
+ */
+
+/**
+ * Current Logged-in User
+ * GET /api/auth/me
+ */
+router.get("/me", authenticate, (req, res) => {
+  console.log("========== /me ROUTE HIT ==========");
+  console.log("Authenticated User:");
+  console.log(req.user);
+
+  return res.status(200).json({
+    success: true,
+    user: req.user,
+  });
+});
+
+/**
+ * Admin Only Endpoint
+ * GET /api/auth/admin
+ */
+router.get(
+  "/admin",
+  authenticate,
+  authorize("ADMIN"),
+  (req, res) => {
+    console.log("========== /admin ROUTE HIT ==========");
+    console.log("Authenticated User:");
+    console.log(req.user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Welcome Admin",
+      user: req.user,
+    });
+  }
+);
 
 module.exports = router;

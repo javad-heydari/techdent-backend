@@ -1,26 +1,59 @@
 /**
- * ROLE MIDDLEWARE (ADVANCED RBAC)
- * Supports multiple roles
+ * ==========================================================
+ * Role Authorization Middleware
+ * ----------------------------------------------------------
+ * Restricts access based on user roles.
+ *
+ * Examples:
+ *
+ * router.get(
+ *      "/users",
+ *      authenticate,
+ *      authorize("ADMIN"),
+ *      controller
+ * );
+ *
+ * router.post(
+ *      "/orders",
+ *      authenticate,
+ *      authorize("DOCTOR", "ADMIN"),
+ *      controller
+ * );
+ * ==========================================================
  */
 
-module.exports = (...allowedRoles) => {
+/**
+ * Role Authorization Middleware
+ *
+ * @param  {...string} allowedRoles
+ */
+const authorize = (...allowedRoles) => {
   return (req, res, next) => {
     try {
-      const userRole = req.user.role;
+      // Authentication middleware must run first
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
 
-      if (!allowedRoles.includes(userRole)) {
+      // Check if current user role is allowed
+      if (!allowedRoles.includes(req.user.role)) {
         return res.status(403).json({
           success: false,
-          message: "Access denied (insufficient permissions)",
+          message: "Forbidden",
         });
       }
 
       next();
-    } catch (error) {
+    } catch (err) {
       return res.status(500).json({
         success: false,
-        message: error.message,
+        message: err.message,
       });
     }
   };
 };
+
+module.exports = authorize;

@@ -1,50 +1,80 @@
-const jwt = require("jsonwebtoken");
+/**
+ * ==========================================================
+ * Authentication Middleware
+ * ----------------------------------------------------------
+ * Verifies JWT Access Token.
+ *
+ * Responsibilities:
+ * - Read Authorization header
+ * - Verify JWT
+ * - Load authenticated user
+ * - Attach user to req.user
+ * ==========================================================
+ */
+
+const userRepository = require("../repositories/user.repository");
+
+const {
+  verifyAccessToken,
+} = require("../utils/token");
 
 /**
- * AUTH MIDDLEWARE (FINAL FIXED)
+ * Authentication Middleware
  */
-module.exports = (req, res, next) => {
+const authenticate = async (req, res, next) => {
   try {
+    // Read Authorization header
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!authHeader) {
       return res.status(401).json({
         success: false,
-        message: "No token provided",
+        message: "Authorization header is missing",
       });
     }
 
+    // Expected format:
+    // Bearer <token>
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid authorization format",
+      });
+    }
+
+    // Extract token
     const token = authHeader.split(" ")[1];
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Token missing",
+        message: "Access token is missing",
       });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_ACCESS_SECRET
-    );
+    // Verify access token
+    const payload = verifyAccessToken(token);
 
-    if (!decoded?.id) {
+    // Load latest user from database
+    const user = await userRepository.findById(payload.id);
+
+    if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid token payload",
+        message: "User not found",
       });
     }
 
-    req.user = {
-      id: decoded.id,
-      role: decoded.role,
-    };
+    // Attach authenticated user to request
+    req.user = user;
 
     next();
-  } catch (error) {
+  } catch (err) {
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired token",
+      message: "Invalid or expired access token",
     });
   }
 };
+
+module.exports = authenticate;

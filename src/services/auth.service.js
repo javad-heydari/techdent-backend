@@ -19,6 +19,13 @@ const {
 } = require("../utils/token");
 
 /**
+ * Refresh Token Lifetime
+ * (7 Days)
+ */
+const REFRESH_TOKEN_EXPIRES_MS =
+  7 * 24 * 60 * 60 * 1000;
+
+/**
  * Register new user
  */
 const register = async ({ name, email, password, role }) => {
@@ -43,6 +50,11 @@ const register = async ({ name, email, password, role }) => {
   await sessionRepository.create({
     userId: user.id,
     refreshToken,
+
+    // Refresh token expiration
+    expiresAt: new Date(
+      Date.now() + REFRESH_TOKEN_EXPIRES_MS
+    ),
   });
 
   return {
@@ -82,6 +94,11 @@ const login = async ({ email, password }) => {
   await sessionRepository.create({
     userId: user.id,
     refreshToken,
+
+    // Refresh token expiration
+    expiresAt: new Date(
+      Date.now() + REFRESH_TOKEN_EXPIRES_MS
+    ),
   });
 
   return {
@@ -117,7 +134,10 @@ const refresh = async ({ refreshToken }) => {
     throw new Error("Invalid or expired refresh token");
   }
 
-  const session = await sessionRepository.findByRefreshToken(refreshToken);
+  const session =
+    await sessionRepository.findByRefreshToken(
+      refreshToken
+    );
 
   console.log("Session:", session);
 
@@ -129,7 +149,9 @@ const refresh = async ({ refreshToken }) => {
     throw new Error("Session revoked");
   }
 
-  const user = await userRepository.findById(payload.id);
+  const user = await userRepository.findById(
+    payload.id
+  );
 
   console.log("User:", user);
 
@@ -138,13 +160,31 @@ const refresh = async ({ refreshToken }) => {
   }
 
   const accessToken = generateAccessToken(user);
-  const newRefreshToken = generateRefreshToken(user);
+  const newRefreshToken =
+    generateRefreshToken(user);
 
-  await sessionRepository.update(session.id, {
+  /**
+   * Remove old refresh token
+   */
+  await sessionRepository.deleteByRefreshToken(
+    refreshToken
+  );
+
+  /**
+   * Create new session
+   */
+  await sessionRepository.create({
+    userId: user.id,
     refreshToken: newRefreshToken,
+
+    expiresAt: new Date(
+      Date.now() + REFRESH_TOKEN_EXPIRES_MS
+    ),
   });
 
-  console.log("Refresh completed successfully");
+  console.log(
+    "Refresh completed successfully"
+  );
 
   return {
     accessToken,
@@ -156,7 +196,9 @@ const refresh = async ({ refreshToken }) => {
  * Logout user
  */
 const logout = async ({ refreshToken }) => {
-  await sessionRepository.invalidate(refreshToken);
+  await sessionRepository.invalidate(
+    refreshToken
+  );
 
   return {
     message: "Logged out successfully",

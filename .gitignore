@@ -1,3 +1,38 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment
 .env
-/src/generated/prisma
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Build
+dist/
+build/
+
+# Coverage
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keys
+*.pem
+*.key
+
+# Runtime
+*.pid
+
+# Temporary
+tmp/
+temp/
