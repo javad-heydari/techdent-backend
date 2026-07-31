@@ -1,0 +1,89 @@
+services:
+
+  # =========================
+  # PostgreSQL Database
+  # =========================
+  postgres:
+    image: postgres:17
+    container_name: techdent-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: techdent
+      POSTGRES_PASSWORD: techdent_password
+      POSTGRES_DB: techdent_dev
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techdent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # =========================
+  # pgAdmin
+  # =========================
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: techdent-pgadmin
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@techdent.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+
+    ports:
+      - "5050:80"
+
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  # =========================
+  # Node API
+  # =========================
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+
+    container_name: techdent-api
+
+    restart: unless-stopped
+
+    ports:
+      - "5000:5000"
+
+    environment:
+      PORT: 5000
+
+      DATABASE_URL: postgresql://techdent:techdent_password@postgres:5432/techdent_dev
+
+      JWT_ACCESS_SECRET: super_access_secret_key
+      JWT_REFRESH_SECRET: super_refresh_secret_key
+      ACCESS_TOKEN_EXPIRES: 30m
+      REFRESH_TOKEN_EXPIRES: 7d
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    volumes:
+
+      # Live source code
+      - ../src:/app/src
+
+      # Persist logs on host
+      - ../logs:/app/logs
+
+volumes:
+  postgres_data:
+  pgadmin_data:

@@ -1,0 +1,97 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ======================================================
+// User
+// ======================================================
+
+model User {
+  id        String   @id @default(uuid())
+
+  name      String
+  email     String   @unique
+  password  String
+
+  role      Role     @default(USER)
+
+  orders    Order[]
+  sessions  Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ======================================================
+// Session
+// ======================================================
+
+model Session {
+  id           String   @id @default(uuid())
+
+  refreshToken String   @unique
+
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  userAgent    String?
+  ipAddress    String?
+
+  isValid      Boolean  @default(true)
+
+  expiresAt    DateTime
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ======================================================
+// Order
+// ======================================================
+
+model Order {
+  id           String      @id @default(uuid())
+
+  patientName  String
+  doctorName   String
+
+  caseType     String
+  shade        String?
+
+  quantity     Int         @default(1)
+
+  status       OrderStatus @default(PENDING)
+
+  dueDate      DateTime?
+  notes        String?
+
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+enum Role {
+  USER
+  ADMIN
+  LAB
+  DOCTOR
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DELIVERED
+}

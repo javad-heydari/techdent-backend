@@ -1,0 +1,35 @@
+# ==========================================================
+# User Schema
+#
+# Represents a TechDent user.
+# ==========================================================
+
+type: object
+
+required:
+  - id
+  - name
+  - email
+  - role
+
+properties:
+
+  id:
+    type: string
+    example: "68711a83d54d8f77d27a9c11"
+
+  name:
+    type: string
+    example: "Ali Ahmadi"
+
+  email:
+    type: string
+    format: email
+    example: "ali@example.com"
+
+  role:
+    type: string
+    enum:
+      - USER
+      - ADMIN
+    example: USER

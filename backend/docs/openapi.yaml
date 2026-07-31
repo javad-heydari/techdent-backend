@@ -1,0 +1,41 @@
+openapi: 3.0.3
+
+info:
+  title: TechDent API
+  version: 1.0.0
+  description: |
+    TechDent Backend API
+
+    Platform connecting:
+
+      • Dentists
+
+      • Dental Laboratories
+
+      • Dental Suppliers
+
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Local Development
+
+tags:
+  - name: Authentication
+    description: Authentication APIs
+
+  - name: Orders
+    description: Order APIs
+
+paths: {}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
