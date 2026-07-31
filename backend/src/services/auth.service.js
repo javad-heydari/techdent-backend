@@ -7,6 +7,7 @@
  * ==========================================================
  */
 
+const logger = require("../config/logger");
 const bcrypt = require("bcryptjs");
 
 const userRepository = require("../repositories/user.repository");
@@ -18,16 +19,9 @@ const {
   verifyRefreshToken,
 } = require("../utils/token");
 
-/**
- * Refresh Token Lifetime
- * (7 Days)
- */
 const REFRESH_TOKEN_EXPIRES_MS =
   7 * 24 * 60 * 60 * 1000;
 
-/**
- * Register new user
- */
 const register = async ({ name, email, password, role }) => {
   const existingUser = await userRepository.findByEmail(email);
 
@@ -51,7 +45,6 @@ const register = async ({ name, email, password, role }) => {
     userId: user.id,
     refreshToken,
 
-    // Refresh token expiration
     expiresAt: new Date(
       Date.now() + REFRESH_TOKEN_EXPIRES_MS
     ),
@@ -69,9 +62,6 @@ const register = async ({ name, email, password, role }) => {
   };
 };
 
-/**
- * Login user
- */
 const login = async ({ email, password }) => {
   const user = await userRepository.findByEmail(email);
 
@@ -95,7 +85,6 @@ const login = async ({ email, password }) => {
     userId: user.id,
     refreshToken,
 
-    // Refresh token expiration
     expiresAt: new Date(
       Date.now() + REFRESH_TOKEN_EXPIRES_MS
     ),
@@ -113,24 +102,19 @@ const login = async ({ email, password }) => {
   };
 };
 
-/**
- * Refresh access token
- */
 const refresh = async ({ refreshToken }) => {
   if (!refreshToken) {
     throw new Error("Refresh token is required");
   }
 
-  console.log("========== REFRESH ==========");
-  console.log("Incoming Refresh:", refreshToken);
+  logger.info("Refresh token received");
 
   let payload;
 
   try {
     payload = verifyRefreshToken(refreshToken);
-    console.log("Payload:", payload);
   } catch (err) {
-    console.log("JWT Verify Error:", err.message);
+    logger.error("JWT Verify Error:", err.message);
     throw new Error("Invalid or expired refresh token");
   }
 
@@ -138,8 +122,6 @@ const refresh = async ({ refreshToken }) => {
     await sessionRepository.findByRefreshToken(
       refreshToken
     );
-
-  console.log("Session:", session);
 
   if (!session) {
     throw new Error("Session not found");
@@ -153,8 +135,6 @@ const refresh = async ({ refreshToken }) => {
     payload.id
   );
 
-  console.log("User:", user);
-
   if (!user) {
     throw new Error("User not found");
   }
@@ -163,16 +143,10 @@ const refresh = async ({ refreshToken }) => {
   const newRefreshToken =
     generateRefreshToken(user);
 
-  /**
-   * Remove old refresh token
-   */
   await sessionRepository.deleteByRefreshToken(
     refreshToken
   );
 
-  /**
-   * Create new session
-   */
   await sessionRepository.create({
     userId: user.id,
     refreshToken: newRefreshToken,
@@ -182,9 +156,7 @@ const refresh = async ({ refreshToken }) => {
     ),
   });
 
-  console.log(
-    "Refresh completed successfully"
-  );
+  logger.info("Token refreshed successfully");
 
   return {
     accessToken,
@@ -192,9 +164,6 @@ const refresh = async ({ refreshToken }) => {
   };
 };
 
-/**
- * Logout user
- */
 const logout = async ({ refreshToken }) => {
   await sessionRepository.invalidate(
     refreshToken
