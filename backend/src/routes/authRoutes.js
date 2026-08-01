@@ -124,11 +124,6 @@ router.get(
   authenticate,
   (req, res) => {
 
-    console.log("========== /me ROUTE HIT ==========");
-    console.log("Authenticated User:");
-    console.log(req.user);
-
-
     return res.status(200).json({
       success: true,
       user: req.user,
@@ -148,11 +143,6 @@ router.get(
   authenticate,
   authorize("ADMIN"),
   (req, res) => {
-
-    console.log("========== /admin ROUTE HIT ==========");
-    console.log("Authenticated User:");
-    console.log(req.user);
-
 
     return res.status(200).json({
       success: true,
